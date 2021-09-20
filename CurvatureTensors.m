@@ -83,6 +83,15 @@ Raise[t, i] receives a list or a table t and raises only index i using metricDua
 Lower::usage ="Lower[t] receives a list or a table t and lowers all of its components using metricDual.
 Lower[t, i] receives a list or a table t and lowers only index i using metricDual.";
 
+Contract11::usage ="";
+Contract12::usage ="";
+Contract22::usage ="";
+Contract13::usage ="";
+Contract23::usage ="";
+Contract33::usage ="";
+Contract14::usage ="";
+Contract24::usage ="";
+Contract44::usage ="";
 
 
 
