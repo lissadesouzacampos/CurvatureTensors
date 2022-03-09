@@ -45,7 +45,7 @@ Lower[]
 It accepts two options. If the spacetime is not Lorentzian, please set 'Riemannian'->True. Given the ambiguity in the definition of the Riemann tensor, you can also toggle the convention chosen by setting 'Toggle'->True";
 
 Contract::usage ="Contract[Tensor1, Tensor2, listIndices] receives Tensor1 and Tensor2 and a list of pair of indices {{\!\(\*SubscriptBox[\(i\), SubscriptBox[\(j\), \(1\)]]\), \!\(\*SubscriptBox[\(i\), SubscriptBox[\(j\), \(2\)]]\)},...} to contract and returns the contraction.";
-Global`\[CapitalLambda]::usage = "cosmological constant."
+Global`\[CapitalLambda]::usage = "cosmological constant.";
 Global`metric::usage =" metric tensor, metric[[\[Mu],\[Nu]]] = \!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\).";
 Global`dimension::usage =" dimension of the spacetime, dimension = Length[metric].";
 Global`metricDual::usage =" dual metric tensor, metricDual[[\[Mu],\[Nu]]] = \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\).";
@@ -93,6 +93,12 @@ Contract14::usage ="";
 Contract24::usage ="";
 Contract44::usage ="";
 
+ConstantSectionalCurvatureEquations::usage ="";
+ConstantSectionalCurvature::usage ="";
+KillingEqs::usage ="";
+gradient::usage="";
+geodesicEqs::usage="";
+basisTransform::usage="";
 
 
 (* ::Section:: *)
@@ -111,7 +117,7 @@ Contract::sorry ="This case has not been implemented yet.";
  Begin["`Private`"];
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Conventions*)
 
 
@@ -201,7 +207,7 @@ StyleBox[\"Chosen\",\nFontWeight->\"Bold\"]\)",
 },2,Background -> {Automatic,{{LightBlue,White}}},Frame->All,FrameStyle -> White];
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*CurvatureTensors*)
 
 
@@ -212,6 +218,7 @@ Options[CurvatureTensors]={
 CurvatureTensors[metric0_, coordinates_, OptionsPattern[]] := Module[{\[Alpha],\[Beta],\[Gamma],\[Delta],\[Kappa],\[Mu],\[Nu],a,b,c,d,e,i,j,k,l,x},
 
 Global`metric = metric0;
+(* do this: Global`coordinates = coordinates0;*)
 
 Global`dimension = Length[Global`metric];
 
@@ -227,7 +234,7 @@ Global`Ricci = Table[Sum[Global`Riemann[[\[Alpha],\[Kappa],\[Beta],\[Kappa]]],{\
 
 Global`RicciUpper = Table[Sum[Global`metricDual[[\[Beta],\[Nu]]]Global`metricDual[[\[Alpha],\[Mu]]] Global`Ricci[[\[Mu],\[Nu]]],{\[Mu],1,Global`dimension},{\[Nu],1,Global`dimension}]//Simplify,{\[Alpha],1,Global`dimension},{\[Beta],1,Global`dimension}];
 
-Global`RicciSquared = Tr[Global`Ricci.Global`RicciUpper];
+Global`RicciSquared = Tr[Global`Ricci . Global`RicciUpper];
 
 Global`RicciScalar = Sum[Global`metricDual[[\[Alpha],\[Beta]]]Global`Ricci[[\[Alpha],\[Beta]]],{\[Alpha],1,Global`dimension},{\[Beta],1,Global`dimension}]//Simplify;
 
@@ -313,7 +320,7 @@ If[OptionValue["framed"],Return@Framed[tab],Return[tab]]
 
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Contract*)
 
 
@@ -467,7 +474,7 @@ Message[Contract::sorry];Return[]
 )
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Raise and Lower*)
 
 
@@ -529,6 +536,105 @@ ni=If[i===-1,nt,Length[i]];
 			]
 		]
 	]
+];
+
+
+(* ::Subsection::Closed:: *)
+(*Constant sectional curvature*)
+
+
+ConstantSectionalCurvatureEquations[t_,s_]:=Module[{RiemannAllDown, \[Mu], \[Nu], \[Alpha], \[Beta],componentEqs,falseCases,eq,n},
+n=Global`dimension;
+If[Length@Dimensions@t==4, 
+RiemannAllDown=Lower[Global`Riemann,4];
+componentEqs=FullSimplify[Table[RiemannAllDown[[\[Mu],\[Nu],\[Alpha],\[Beta]]]==-s  (Global`metric[[\[Alpha],\[Nu]]]Global`metric[[\[Mu],\[Beta]]]-Global`metric[[\[Alpha],\[Mu]]]Global`metric[[\[Beta],\[Nu]]]),{\[Mu],1,n},{\[Nu],1,n},{\[Alpha],1,n},{\[Beta],1,n}]];
+falseCases=DeleteCases[Flatten@componentEqs,True];
+If[falseCases==={}, Return["True"], Return[falseCases]
+]
+];
+If[Length@Dimensions@t==2, 
+componentEqs=FullSimplify[Table[Global`Ricci[[\[Mu],\[Nu]]]==s (n -1 ) Global`metric[[\[Mu],\[Nu]]],{\[Mu],1,n},{\[Nu],1,n}]];
+falseCases=DeleteCases[Flatten@componentEqs,True];
+If[falseCases==={}, Return["True"], Return@FullSimplify[falseCases]
+]
+];
+If[Length@Dimensions@t==1, 
+eq=FullSimplify[Global`RicciScalar== (s)n (n -1 )];
+If[eq===True, Return["True"], Return[eq]
+]
+];
+];
+
+
+ConstantSectionalCurvature:=Module[{s0,s,\[Mu]},
+s=Solve[ConstantSectionalCurvatureEquations[Global`RicciScalar,s0],s0][[1,1,2]];
+If[Do[If[D[s,Global`coordinates[[\[Mu]]]]=!=0,Return[0]],{\[Mu],1,Global`dimension}]==0,Return["False"]];
+If[ConstantSectionalCurvatureEquations[Global`Ricci,s]==="True"&& ConstantSectionalCurvatureEquations[Global`Riemann,s]==="True", Return[s],Return["Maybe! Check the equations..."]
+]
+];
+
+
+(* ::Subsection::Closed:: *)
+(*Killing equations*)
+
+
+Options[KillingEqs]={
+"indices"-> "down"
+};
+KillingEqs[\[Xi]_,OptionsPattern[]]:=Module[{covD\[Xi],eqs,\[Mu],\[Nu],n},
+n=Global`dimension;
+If[OptionValue["indices"]==="down",
+covD\[Xi]=Lower[Table[covariantDerivative1[Raise[\[Xi]],\[Mu],\[Nu]],{\[Mu],1,n},{\[Nu],1,n}],1],
+If[OptionValue["indices"]==="up",
+covD\[Xi]=Raise[Table[covariantDerivative1[\[Xi],\[Mu],\[Nu]],{\[Mu],1,n},{\[Nu],1,n}],2]
+]
+];
+eqs=covD\[Xi]+Transpose[covD\[Xi]];
+Return@Simplify@Table[eqs[[\[Mu],\[Nu]]]==0,{\[Mu],1,n},{\[Nu],1,n}]
+];
+
+
+(* ::Subsection::Closed:: *)
+(*Gradient*)
+
+
+Options[gradient]={
+"indices"-> "up"
+};
+gradient[\[Phi]_,OptionsPattern[]]:=Module[{\[Mu],\[Nu]},
+If[OptionValue["indices"]==="up",
+Return@Table[Sum[Global`metricDual[[\[Mu],\[Nu]]]D[\[Phi],Global`coordinates[[\[Nu]]]],{\[Nu],1,Global`dimension}],{\[Mu],1,Global`dimension}],
+If[OptionValue["indices"]==="down",
+Return@Table[D[\[Phi],Global`coordinates[[\[Nu]]]],{\[Nu],1,Global`dimension}]
+]
+];
+];
+
+
+(* ::Subsection::Closed:: *)
+(*Geodesic equations*)
+
+
+geodesicEqs[xup_,\[Tau]_]:=Module[{\[Mu],\[Alpha],\[Beta],\[Sigma],\[Lambda]},
+Return@Simplify@Table[D[xup[[\[Mu]]],{\[Tau],2}]+Sum[Global`Christoffel[[\[Alpha],\[Beta],\[Mu]]]D[xup[[\[Alpha]]],\[Tau]]D[xup[[\[Beta]]],\[Tau]],{\[Alpha],1,Global`dimension},{\[Beta],1,Global`dimension}]==0,{\[Mu],1,Global`dimension}]
+];
+
+
+(* ::Subsection::Closed:: *)
+(*Basis transform*)
+
+
+basisTransform[new_,oldAsNew_,oldTensor_:0]:=Module[{\[Mu],\[Nu],n,\[CapitalLambda],a,b,newTensor1,newTensor2},
+n=Length[new];
+\[CapitalLambda]=Simplify@Table[D[oldAsNew[[\[Mu]]],new[[\[Nu]]]],{\[Mu],1,n},{\[Nu],1,n}];
+If[oldTensor===0,Return@Simplify@\[CapitalLambda],
+If[Length@Dimensions[oldTensor]===1,
+Return@Simplify@Table[Sum[\[CapitalLambda][[a,\[Mu]]]oldTensor[[a]],{a,1,n}],{\[Mu],1,n}],
+If[Length@Dimensions[oldTensor]===2,
+Return@Simplify@Table[Sum[\[CapitalLambda][[a,\[Mu]]]\[CapitalLambda][[b,\[Nu]]]oldTensor[[a,b]],{a,1,n},{b,1,n}],{\[Mu],1,n},{\[Nu],1,n}]
+]
+];
+];
 ];
 
 
